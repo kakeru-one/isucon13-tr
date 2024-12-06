@@ -51,6 +51,22 @@ func main() {
 		log.Fatalln("Failed to execute query:", err)
 	}
 
+	outputDir := "../../webapp/img/"
+
+	// /tmp ディレクトリ内の内容を削除
+	err = os.RemoveAll(outputDir)
+	if err != nil {
+		fmt.Printf("Failed to remove contents of %s: %v\n", outputDir, err)
+		return
+	}
+
+	// /tmp ディレクトリ自体を再作成
+	err = os.Mkdir(outputDir, 0755)
+	if err != nil {
+		fmt.Printf("Failed to recreate %s: %v\n", outputDir, err)
+		return
+	}
+
 	for _, v := range images {
 		// バイナリデータをReaderに変換
 		reader := bytes.NewReader(v.Image)
@@ -63,7 +79,7 @@ func main() {
 
 		// 出力ファイルを作成
 		dir := "../../webapp/img/"
-		f, err := os.Create(dir + v.UserID + ".jpg")
+		f, err := os.Create(dir + v.UserID + ".jpeg")
 		if err != nil {
 			log.Fatal(err)
 		}
