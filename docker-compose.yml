@@ -1,0 +1,23 @@
+services:
+  database:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.mysql
+    image: mysql:8.0
+    platform: linux/amd64
+    tty: true
+    container_name: isu_database
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports: # 他のコンテナからmysqlクライアントを用いてアクセスしたい場合は、portを公開する必要あり
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: isucon
+      TZ: "Asia/Tokyo"
+    volumes:
+      # - ./config/my.cnf:/etc/mysql/conf.d/my.cnf
+      - data-volume:/var/lib/mysql
+      - .:/usr/scripts
+
+volumes:
+  data-volume:
