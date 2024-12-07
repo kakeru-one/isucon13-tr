@@ -17,6 +17,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/gorilla/sessions"
 	"github.com/labstack/echo-contrib/session"
 	echolog "github.com/labstack/gommon/log"
@@ -39,6 +40,7 @@ var (
 	powerDNSSubdomainAddress string
 	dbConn                   *sqlx.DB
 	secret                   = []byte("isucon13_session_cookiestore_defaultsecret")
+	mc                       *memcache.Client
 )
 
 func init() {
@@ -207,6 +209,9 @@ func main() {
 		os.Exit(1)
 	}
 	powerDNSSubdomainAddress = subdomainAddr
+
+	// memcachedクライアントの初期化
+	mc = memcache.New("127.0.0.1:11211")
 
 	// HTTPサーバ起動
 	listenAddr := net.JoinHostPort("", strconv.Itoa(listenPort))

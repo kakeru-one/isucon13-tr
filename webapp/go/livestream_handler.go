@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
@@ -485,6 +486,18 @@ func getLivecommentReportsHandler(c echo.Context) error {
 }
 
 func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel LivestreamModel) (Livestream, error) {
+	// キャッシュキーの生成
+	cacheKey := fmt.Sprintf("livestream:%d", livestreamModel.ID)
+
+	// キャッシュの確認
+	if item, err := mc.Get(cacheKey); err == nil {
+		var livestream Livestream
+		if err := json.Unmarshal(item.Value, &livestream); err == nil {
+			return livestream, nil
+		}
+	}
+
+	// 以下、既存のDB処理
 	ownerModel := UserModel{}
 	if err := tx.GetContext(ctx, &ownerModel, "SELECT * FROM users WHERE id = ?", livestreamModel.UserID); err != nil {
 		return Livestream{}, err
@@ -523,5 +536,15 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		StartAt:      livestreamModel.StartAt,
 		EndAt:        livestreamModel.EndAt,
 	}
+
+	// 結果をキャッシュに保存（60秒）
+	if livestreamJSON, err := json.Marshal(livestream); err == nil {
+		mc.Set(&memcache.Item{
+			Key:        cacheKey,
+			Value:      livestreamJSON,
+			Expiration: 60,
+		})
+	}
+
 	return livestream, nil
 }
