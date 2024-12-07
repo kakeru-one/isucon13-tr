@@ -105,10 +105,14 @@ func getIconHandler(c echo.Context) error {
 	}
 
 	// アイコンのパスを生成
+	// このPathのURLにリダイレクトする
 	iconPath := fmt.Sprintf("/img/%d.jpeg", user.ID)
 
-	// Nginxにリクエストを転送
-	return c.Redirect(http.StatusFound, iconPath)
+	// レスポンスヘッダーにX-Accel-Redirectを設定
+	c.Response().Header().Set("X-Accel-Redirect", iconPath)
+
+	// レスポンスコード200で返却
+	return c.NoContent(http.StatusOK)
 }
 
 func postIconHandler(c echo.Context) error {
