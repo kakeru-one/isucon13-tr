@@ -25,6 +25,7 @@ services:
       - "80:80" # 外部から8080でアクセス可能
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro # Nginx設定ファイルをマウント
+      - ./webapp/img:/etc/img/
 
 volumes:
   data-volume:

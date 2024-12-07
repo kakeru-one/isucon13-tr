@@ -104,16 +104,11 @@ func getIconHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user: "+err.Error())
 	}
 
-	var image []byte
-	if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.File(fallbackImage)
-		} else {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user icon: "+err.Error())
-		}
-	}
+	// アイコンのパスを生成
+	iconPath := fmt.Sprintf("../img/%d.jpeg", user.ID)
 
-	return c.Blob(http.StatusOK, "image/jpeg", image)
+	// Nginxにリクエストを転送
+	return c.Redirect(http.StatusFound, iconPath)
 }
 
 func postIconHandler(c echo.Context) error {
