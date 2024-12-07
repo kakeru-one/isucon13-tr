@@ -105,7 +105,7 @@ func getIconHandler(c echo.Context) error {
 	}
 
 	// アイコンのパスを生成
-	iconPath := fmt.Sprintf("../img/%d.jpeg", user.ID)
+	iconPath := fmt.Sprintf("/img/%d.jpeg", user.ID)
 
 	// Nginxにリクエストを転送
 	return c.Redirect(http.StatusFound, iconPath)
