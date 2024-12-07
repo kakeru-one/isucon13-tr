@@ -18,6 +18,13 @@ services:
       # - ./config/my.cnf:/etc/mysql/conf.d/my.cnf
       - data-volume:/var/lib/mysql
       - .:/usr/scripts
+  nginx:
+    image: nginx:latest
+    container_name: nginx_proxy
+    ports:
+      - "80:80" # 外部から8080でアクセス可能
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro # Nginx設定ファイルをマウント
 
 volumes:
   data-volume:
