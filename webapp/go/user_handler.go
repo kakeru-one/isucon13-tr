@@ -129,6 +129,20 @@ func postIconHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "failed to decode the request body as json")
 	}
 
+	// アイコン画像の保存処理
+	iconPath := fmt.Sprintf("../img/%d.jpeg", userID)
+
+	// ファイルに保存（既存ファイルは上書きされる）
+	file, err := os.Create(iconPath)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create image file: "+err.Error())
+	}
+	defer file.Close()
+
+	if _, err := file.Write(req.Image); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "failed to write image file: "+err.Error())
+	}
+
 	tx, err := dbConn.BeginTxx(ctx, nil)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
