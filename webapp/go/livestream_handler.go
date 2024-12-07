@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
@@ -174,6 +175,14 @@ func searchLivestreamsHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 	keyTagName := c.QueryParam("tag")
 
+	cacheKey := fmt.Sprintf("search_livestreams:%s", keyTagName)
+	if item, err := mc.Get(cacheKey); err == nil {
+		var livestreams []Livestream
+		if err := json.Unmarshal(item.Value, &livestreams); err == nil {
+			return c.JSON(http.StatusOK, livestreams)
+		}
+	}
+
 	tx, err := dbConn.BeginTxx(ctx, nil)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
@@ -230,6 +239,15 @@ func searchLivestreamsHandler(c echo.Context) error {
 		livestreams[i] = livestream
 	}
 
+	// キャッシュの保存
+	if livestreamsJSON, err := json.Marshal(livestreams); err == nil {
+		mc.Set(&memcache.Item{
+			Key:        cacheKey,
+			Value:      livestreamsJSON,
+			Expiration: 60,
+		})
+	}
+
 	if err := tx.Commit(); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
 	}
@@ -243,6 +261,18 @@ func getMyLivestreamsHandler(c echo.Context) error {
 		return err
 	}
 
+	sess, _ := session.Get(defaultSessionIDKey, c)
+	userID := sess.Values[defaultUserIDKey].(int64)
+
+	// ユーザーごとのライブストリーム一覧用のキャッシュキー
+	cacheKey := fmt.Sprintf("user_livestreams:%d", userID)
+	if item, err := mc.Get(cacheKey); err == nil {
+		var livestreams []Livestream
+		if err := json.Unmarshal(item.Value, &livestreams); err == nil {
+			return c.JSON(http.StatusOK, livestreams)
+		}
+	}
+
 	tx, err := dbConn.BeginTxx(ctx, nil)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
@@ -250,9 +280,9 @@ func getMyLivestreamsHandler(c echo.Context) error {
 	defer tx.Rollback()
 
 	// error already checked
-	sess, _ := session.Get(defaultSessionIDKey, c)
+	sess, _ = session.Get(defaultSessionIDKey, c)
 	// existence already checked
-	userID := sess.Values[defaultUserIDKey].(int64)
+	userID = sess.Values[defaultUserIDKey].(int64)
 
 	var livestreamModels []*LivestreamModel
 	if err := tx.SelectContext(ctx, &livestreamModels, "SELECT * FROM livestreams WHERE user_id = ?", userID); err != nil {
@@ -265,6 +295,15 @@ func getMyLivestreamsHandler(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill livestream: "+err.Error())
 		}
 		livestreams[i] = livestream
+	}
+
+	// キャッシュの保存
+	if livestreamsJSON, err := json.Marshal(livestreams); err == nil {
+		mc.Set(&memcache.Item{
+			Key:        cacheKey,
+			Value:      livestreamsJSON,
+			Expiration: 60,
+		})
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -281,6 +320,15 @@ func getUserLivestreamsHandler(c echo.Context) error {
 	}
 
 	username := c.Param("username")
+
+	// ユーザー名ごとのライブストリーム一覧用のキャッシュキー
+	cacheKey := fmt.Sprintf("username_livestreams:%s", username)
+	if item, err := mc.Get(cacheKey); err == nil {
+		var livestreams []Livestream
+		if err := json.Unmarshal(item.Value, &livestreams); err == nil {
+			return c.JSON(http.StatusOK, livestreams)
+		}
+	}
 
 	tx, err := dbConn.BeginTxx(ctx, nil)
 	if err != nil {
@@ -308,6 +356,15 @@ func getUserLivestreamsHandler(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill livestream: "+err.Error())
 		}
 		livestreams[i] = livestream
+	}
+
+	// キャッシュの保存
+	if livestreamsJSON, err := json.Marshal(livestreams); err == nil {
+		mc.Set(&memcache.Item{
+			Key:        cacheKey,
+			Value:      livestreamsJSON,
+			Expiration: 60,
+		})
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -404,6 +461,17 @@ func getLivestreamHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "livestream_id in path must be integer")
 	}
 
+	// キャッシュの確認を先に行う
+	cacheKey := fmt.Sprintf("livestream:%d", livestreamID)
+	if item, err := mc.Get(cacheKey); err == nil {
+		var livestream Livestream
+		if err := json.Unmarshal(item.Value, &livestream); err == nil {
+			// キャッシュヒットしたらそのまま返して早期return
+			return c.JSON(http.StatusOK, livestream)
+		}
+	}
+
+	// ヒットしなければDBから取得
 	tx, err := dbConn.BeginTxx(ctx, nil)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
@@ -422,6 +490,15 @@ func getLivestreamHandler(c echo.Context) error {
 	livestream, err := fillLivestreamResponse(ctx, tx, livestreamModel)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to fill livestream: "+err.Error())
+	}
+
+	// キャッシュの保存
+	if livestreamJSON, err := json.Marshal(livestream); err == nil {
+		mc.Set(&memcache.Item{
+			Key:        cacheKey,
+			Value:      livestreamJSON,
+			Expiration: 60,
+		})
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -523,5 +600,6 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		StartAt:      livestreamModel.StartAt,
 		EndAt:        livestreamModel.EndAt,
 	}
+
 	return livestream, nil
 }

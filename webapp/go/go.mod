@@ -3,6 +3,7 @@ module github.com/isucon/isucon13/webapp/go
 go 1.21
 
 require (
+	github.com/bradfitz/gomemcache v0.0.0-20230905024940-24af94b03874
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/sessions v1.2.2

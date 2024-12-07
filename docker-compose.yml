@@ -26,6 +26,12 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro # Nginx設定ファイルをマウント
       - ./webapp/img:/etc/img/
+  memcached:
+    image: memcached:latest
+    container_name: isu_memcached
+    ports:
+      - "11211:11211"
+    command: memcached -m 64 # メモリ制限64MB
 
 volumes:
   data-volume:
