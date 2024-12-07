@@ -23,9 +23,17 @@ import (
 )
 
 const (
-	listenPort                     = 8080
 	powerDNSSubdomainAddressEnvKey = "ISUCON13_POWERDNS_SUBDOMAIN_ADDRESS"
 )
+
+var listenPort = func() int {
+	if port, exists := os.LookupEnv("ECHO_PORT"); exists {
+		if parsedPort, err := strconv.Atoi(port); err == nil {
+			return parsedPort
+		}
+	}
+	return 8080
+}()
 
 var (
 	powerDNSSubdomainAddress string
