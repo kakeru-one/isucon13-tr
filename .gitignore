@@ -1,4 +1,4 @@
-!img/
-img/NoImage.jpg
+img/
+!img/NoImage.jpg
 dump.sql
 script/transfer_images/transfer_image
